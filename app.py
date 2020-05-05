@@ -2,6 +2,15 @@ import os
 from flask import Flask, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
+from keras.models import Sequential, load_model
+import keras,sys
+import numpy as np
+from PIL import Image
+
+classes = ["monkey","boar","crow"]
+num_classes = len(classes)
+image_size = 75
+
 UPLOAD_FOLDER = './uploads'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'gif'])
 
@@ -24,7 +33,25 @@ def upload_file():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for('uploaded_file', filename=filename))
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            model = load_model('./dev_rsc/animal_cnn.h5')
+
+            image = Image.open(filepath)
+            image = image.convert('RGB')
+            image = image.resize((image_size, image_size))
+            data = np.asarray(image)
+            X = []
+            X.append(data)
+            X = np.array(X)
+
+            result = model.predict([X])[0]
+            predicted = result.argmax()
+            percentage = int(result[predicted] * 100)
+
+            return "ラベル： " + classes[predicted] + ", 確率："+ str(percentage) + " %"
+            #return redirect(url_for('uploaded_file', filename=filename))
+
     return '''
     <!doctype html>
     <html>
